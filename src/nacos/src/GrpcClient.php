@@ -315,26 +315,32 @@ class GrpcClient
         throw new ConnectToServerFailedException('the nacos server is not ready to work in 30 seconds, connect to server failed');
     }
 
-    private function isWorkerExit(): bool
+    protected function getMetadata(RequestInterface $request): array
     {
-        return CoordinatorManager::until(Constants::WORKER_EXIT)->isClosing();
+        return match ($this->config->getCloudName()) {
+            CloudName::Aliyun => $this->getAliyunMetadata($request),
+            default => $this->getDefaultMetadata($request),
+        };
     }
 
-    private function getMetadata(RequestInterface $request): array
+    protected function getAliyunMetadata(RequestInterface $request): array
     {
-        if ($accessKey = $this->config->getAccessKey()) {
-            $accessSecret = $this->config->getAccessSecret();
-            $signHeaders = $this->getMseSignHeaders($request, $accessSecret);
+        $accessKey = $this->config->getAccessKey();
+        $accessSecret = $this->config->getAccessSecret();
+        $signHeaders = $this->getMseSignHeaders($request, $accessSecret);
 
-            return [
-                'type' => $request->getType(),
-                'clientIp' => $this->ip(),
-                'headers' => [
-                    'Spas-AccessKey' => $accessKey,
-                    ...$signHeaders,
-                ],
-            ];
-        }
+        return [
+            'type' => $request->getType(),
+            'clientIp' => $this->ip(),
+            'headers' => [
+                'Spas-AccessKey' => $accessKey,
+                ...$signHeaders,
+            ],
+        ];
+    }
+
+    protected function getDefaultMetadata(RequestInterface $request): array
+    {
         if ($token = $this->getAccessToken()) {
             return [
                 'type' => $request->getType(),
@@ -349,6 +355,11 @@ class GrpcClient
             'type' => $request->getType(),
             'clientIp' => $this->ip(),
         ];
+    }
+
+    private function isWorkerExit(): bool
+    {
+        return CoordinatorManager::until(Constants::WORKER_EXIT)->isClosing();
     }
 
     private function grpcDefaultHeaders(): array
