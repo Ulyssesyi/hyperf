@@ -377,7 +377,7 @@ class GrpcClient
         $data = $request->getValue();
         $group = $data['group'] ?? '';
         $tenant = $data['tenant'] ?? '';
-        $timeStamp = (string)round(microtime(true) * 1000);
+        $timeStamp = (string) round(microtime(true) * 1000);
         $signStr = '';
 
         if ($tenant) {
